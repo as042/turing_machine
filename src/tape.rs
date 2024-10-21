@@ -141,7 +141,7 @@ fn i64_to_idx(int: i64) -> usize {
     ((4 * int.abs() + int.signum() - 1) / 2) as usize
 }
 
-// Converts an internal vector index to an i64 location.
+/// Converts an internal vector index to an i64 location.
 #[inline]
 fn idx_to_i64(idx: usize) -> i64 {
     (1 - 2 * (idx as i64 % 2)) * idx as i64 / 2 - idx as i64 % 2
