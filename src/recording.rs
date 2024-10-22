@@ -2,6 +2,7 @@ use std::{thread::sleep, time::Duration};
 
 use crate::tape::Tape;
 
+/// A log of the movements and operations of a specific `TuringMachine`.
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct Recording {
     pub(crate) input: Tape,
@@ -11,6 +12,7 @@ pub struct Recording {
 }
 
 impl Recording {
+    /// Plays back a "movie" of the Turing machine in the terminal.
     #[inline]
     pub fn play_in_console(&self, step_delay: Duration, cls: bool) {
         let mut tape = self.input.clone();
@@ -41,6 +43,7 @@ impl Recording {
     }
 }
 
+#[inline]
 fn recording_print(tape: &Tape, head_loc: i64, state: u64, head_move: i64) {
     let mut move_left = "    ";
     let mut move_right = "";

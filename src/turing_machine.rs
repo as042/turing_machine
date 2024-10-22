@@ -1,10 +1,13 @@
 use std::time::{Duration, Instant};
 
 use crate::prelude::Recording;
-use crate::smart_builder::SmartBuilder;
 use crate::tape::Tape;
 use crate::transition_fn::TransitionFn;
 
+/// A simulation of a Turing machine, aka an "a-machine", 
+/// a concept invented by Alan Turing in 1936.
+/// This type is inherently mutable as it represents
+/// an actual Turing machine moving around and changing states.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TuringMachine {
     transition_fn: TransitionFn,
@@ -13,6 +16,8 @@ pub struct TuringMachine {
 }
 
 impl TuringMachine {
+    /// Constructs a new Turing machine from the specified transition function.
+    /// Initial state and head location are always 0.
     #[inline]
     pub fn new(transition_fn: TransitionFn) -> Self {
         TuringMachine {
@@ -21,32 +26,32 @@ impl TuringMachine {
         }
     }
 
-    #[inline]
-    pub fn smart_builder() -> SmartBuilder {
-        SmartBuilder::default()
-    }
-
+    /// Returns the transition function of `self`.
     #[inline]
     pub fn transition_fn(&self) -> &TransitionFn {
         &self.transition_fn
     }
 
+    /// Returns the current state of `self`.
     #[inline]
     pub fn state(&self) -> u64 {
         self.state
     }
 
+    /// Returns the current head location of `self`.
     #[inline]
     pub fn head_loc(&self) -> i64 {
         self.head_loc
     }
 
+    /// Resets the state and head location of `self` to their initial values of 0.
     #[inline]
     pub fn reset(&mut self) {
         self.state = 0;
         self.head_loc = 0;
     }
 
+    /// Runs `self`, changing its state and moving its head while writing to the specified tape.
     #[inline]
     pub fn run(&mut self, tape: &mut Tape) {
         let mut symbol;
@@ -63,6 +68,8 @@ impl TuringMachine {
         }
     }
 
+    /// Runs `self`, changing its state and moving its head while writing to the specified tape.
+    /// Returns a `Recording` of the process that contains all steps and can be played back.
     #[inline]
     pub fn run_and_record(&mut self, tape: &mut Tape) -> Recording {
         let input = tape.clone();
@@ -93,6 +100,8 @@ impl TuringMachine {
         }
     }
 
+    /// Runs `self`, changing its state and moving its head while writing to the specified tape.
+    /// Takes in a `HaltSetting` that describes when the machine should be forcibly halted.
     #[inline]
     pub fn run_with_halt_setting(&mut self, tape: &mut Tape, halt_setting: HaltSetting) {
         if halt_setting == HaltSetting::NoForcedHalt {
@@ -129,6 +138,9 @@ impl TuringMachine {
         }
     }
 
+    /// Runs `self`, changing its state and moving its head while writing to the specified tape.
+    /// Takes in a `HaltSetting` that describes when the machine should be forcibly halted.
+    /// Returns a `Recording` of the process that contains all steps and can be played back.
     #[inline]
     pub fn run_with_halt_setting_and_record(&mut self, tape: &mut Tape, halt_setting: HaltSetting) -> Recording {
         let input = tape.clone();
@@ -179,6 +191,11 @@ impl TuringMachine {
     }
 }
 
+/// A parameter type that describes when a Turing machine should be forcibly halted.
+/// The `NoForcedHalt` variant simply states that the machine should not be forcibly halted.
+/// The `AfterSteps(usize)` variant states that it should be halted after `usize` number of steps;
+/// i.e., the machine has written to the tape `usize` number of times.
+/// The `AfterDuration(Duration)` variant states the machine should be halted after a `Duration` has elapsed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum HaltSetting {
     #[default]

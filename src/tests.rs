@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+/// BB-2 shown in terminal.
 pub fn busy_beaver_2_state() {
     let trans_fn = TransitionFn::new(
         &vec![
