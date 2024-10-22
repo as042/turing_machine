@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
 
+use crate::prelude::Recording;
+use crate::smart_builder::SmartBuilder;
 use crate::tape::Tape;
 use crate::transition_fn::TransitionFn;
 
@@ -17,6 +19,11 @@ impl TuringMachine {
             transition_fn,
             ..Default::default()
         }
+    }
+
+    #[inline]
+    pub fn smart_builder() -> SmartBuilder {
+        SmartBuilder::default()
     }
 
     #[inline]
@@ -57,6 +64,36 @@ impl TuringMachine {
     }
 
     #[inline]
+    pub fn run_and_record(&mut self, tape: &mut Tape) -> Recording {
+        let input = tape.clone();
+        let init_state = self.state.clone();
+        let init_head_loc = self.head_loc.clone();
+        let mut steps = Vec::default();
+
+        let mut symbol;
+        loop {
+            symbol = tape.symbol_at_n(self.head_loc);
+            if let Some(output) = self.transition_fn.run(self.state, symbol) {
+                self.state = output.0;
+                tape.write(self.head_loc, output.1);
+                self.head_loc += output.2 as i64 * 2 - 1;
+
+                steps.push(output);
+            }
+            else {
+                break;
+            }
+        }
+
+        Recording {
+            input,
+            init_state,
+            init_head_loc,
+            steps,
+        }
+    }
+
+    #[inline]
     pub fn run_with_halt_setting(&mut self, tape: &mut Tape, halt_setting: HaltSetting) {
         if halt_setting == HaltSetting::NoForcedHalt {
             self.run(tape);
@@ -64,15 +101,15 @@ impl TuringMachine {
         }
 
         let start = Instant::now();
-        let mut steps = 0;
+        let mut step_num = 0;
 
         let mut symbol;
         loop {
             if let HaltSetting::AfterSteps(max_steps) = halt_setting {
-                if steps >= max_steps {
+                if step_num >= max_steps {
                     break;
                 }
-                steps += 1;
+                step_num += 1;
             }
             else if let HaltSetting::AfterDuration(max_duration) = halt_setting {
                 if start.elapsed() >= max_duration {
@@ -89,6 +126,55 @@ impl TuringMachine {
             else {
                 break;
             }
+        }
+    }
+
+    #[inline]
+    pub fn run_with_halt_setting_and_record(&mut self, tape: &mut Tape, halt_setting: HaltSetting) -> Recording {
+        let input = tape.clone();
+        let init_state = self.state.clone();
+        let init_head_loc = self.head_loc.clone();
+        let mut steps = Vec::default();
+
+        if halt_setting == HaltSetting::NoForcedHalt {
+            return self.run_and_record(tape);
+        }
+
+        let start = Instant::now();
+        let mut step_num = 0;
+
+        let mut symbol;
+        loop {
+            if let HaltSetting::AfterSteps(max_steps) = halt_setting {
+                if step_num >= max_steps {
+                    break;
+                }
+                step_num += 1;
+            }
+            else if let HaltSetting::AfterDuration(max_duration) = halt_setting {
+                if start.elapsed() >= max_duration {
+                    break;
+                }
+            } 
+
+            symbol = tape.symbol_at_n(self.head_loc);
+            if let Some(output) = self.transition_fn.run(self.state, symbol) {
+                self.state = output.0;
+                tape.write(self.head_loc, output.1);
+                self.head_loc += output.2 as i64 * 2 - 1;
+
+                steps.push(output);
+            }
+            else {
+                break;
+            }
+        }
+
+        Recording {
+            input,
+            init_state,
+            init_head_loc,
+            steps,
         }
     }
 }
@@ -165,6 +251,28 @@ mod tests {
     }
 
     #[test]
+    fn test_run_and_record() {
+        let trans_fn = TransitionFn::new(
+            &vec![
+                ((0, 0), (1, 1, true)),
+                ((1, 0), (1, 4, false)),
+                ((1, 1), (2, 1, false)),
+                ((2, 0), (3, 3, true)),
+            ]
+        );
+
+        let mut machine = TuringMachine::new(trans_fn);
+        let tape = Tape::new(vec![0, 0, 1, 5, 9]);
+        let mut tape2 = tape.clone();
+
+        let record = machine.run_and_record(&mut tape2);
+
+        assert_eq!(tape2.symbols(), vec![3, 1, 4, 1, 5, 9]);
+        assert_eq!(record.input, tape);
+        assert_eq!(record.steps, [(1, 1, true), (1, 4, false), (2, 1, false), (3, 3, true)]);
+    }
+
+    #[test]
     fn test_run_with_halt_setting() {
         let trans_fn = TransitionFn::new(
             &vec![
@@ -192,5 +300,31 @@ mod tests {
         machine.reset();
         tape = Tape::default();
         machine.run_with_halt_setting(&mut tape, HaltSetting::AfterDuration(Duration::from_micros(1000)));
+    }
+
+    #[test]
+    fn test_run_with_halt_setting_and_record() {
+        let trans_fn = TransitionFn::new(
+            &vec![
+                ((0, 0), (1, 1, true)),
+                ((1, 0), (0, 1, false)),
+                ((0, 1), (1, 2, true)),
+                ((1, 1), (0, 2, false)),
+                ((0, 2), (1, 3, true)),
+                ((1, 2), (0, 3, false)),
+                ((0, 3), (1, 1, true)),
+                ((1, 3), (0, 1, false)),
+            ]
+        );
+
+        let mut machine = TuringMachine::new(trans_fn);
+        let tape = Tape::default();
+        let mut tape2 = tape.clone();
+
+        let record = machine.run_with_halt_setting_and_record(&mut tape2, HaltSetting::AfterSteps(5));
+
+        assert_eq!(tape2.symbols(), vec![3, 2]);
+        assert_eq!(record.input, tape);
+        assert_eq!(record.steps, [(1, 1, true), (0, 1, false), (1, 2, true), (0, 2, false), (1, 3, true)]);
     }
 }
