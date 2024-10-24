@@ -1,5 +1,5 @@
-use turing_machine::tests::*;
+use turing_machine::{prelude::*, tests::*};
 
 fn main() {
-    busy_beaver_2_state();
+    println!("{:?}", TuringMachine::chaitin_approx(3, 2, HaltSetting::AfterSteps(100)));
 }

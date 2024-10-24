@@ -189,6 +189,28 @@ impl TuringMachine {
             steps,
         }
     }
+
+    #[inline]
+    pub fn chaitin_approx(num_states: usize, num_symbols: usize, halt_setting: HaltSetting) -> (f64, f64) {
+        let trans_fns = TransitionFn::enumerate(num_states, num_symbols);
+        let mut halted = 0;
+        let mut undecided = 0;
+
+        for t in 0..trans_fns.len() {
+            let mut tm = TuringMachine::new(trans_fns[t].clone());
+
+            tm.run_with_halt_setting(&mut Tape::default(), halt_setting);
+            
+            if tm.state == num_states as u64 {
+                halted += 1;
+            }
+            else {
+                undecided += 1;
+            }
+        }
+
+        (halted as f64 / trans_fns.len() as f64, undecided as f64 / trans_fns.len() as f64)
+    }
 }
 
 /// A parameter type that describes when a Turing machine should be forcibly halted.
